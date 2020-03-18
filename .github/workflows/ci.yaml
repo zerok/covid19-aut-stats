@@ -32,4 +32,4 @@ jobs:
         make covid19-aut.sqlite && \
         pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} && \
         docker push ${image_name} && \
-        gcloud run deploy covid19-aut-stats --image ${image_name} --platform managed --region europe-west1
+        gcloud run deploy covid19-aut-stats --image ${image_name} --platform managed --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }}
