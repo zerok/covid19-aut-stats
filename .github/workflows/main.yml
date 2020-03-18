@@ -21,7 +21,7 @@ jobs:
         python -m pip install --upgrade pip pipenv
         pipenv --python python3.8 sync
         pipenv run python3 update-csv.py --output-file covid19-aut.csv
-        [ test -n "$(git diff covid19-aut.csv)"] && echo "::set-output name=output_changed::true"
+        test -n "$(git diff covid19-aut.csv)" && echo "::set-output name=output_changed::true" || echo "Nothing changed"
 
     - name: Commit changed file
       if: steps.run.outputs.output_changed == 'true'
