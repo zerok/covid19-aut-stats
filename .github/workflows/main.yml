@@ -19,4 +19,4 @@ jobs:
       run: |
         python -m pip install --upgrade pip pipenv
         pipenv --python python3.8 sync
-        pipenv run update-csv.py --output-file covid19-aut.csv
+        pipenv run python3 update-csv.py --output-file covid19-aut.csv
