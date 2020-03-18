@@ -16,7 +16,17 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup
+      id: run
       run: |
         python -m pip install --upgrade pip pipenv
         pipenv --python python3.8 sync
         pipenv run python3 update-csv.py --output-file covid19-aut.csv
+        [ test -n "$(git diff covid19-aut.csv)"] && echo "::set-output name=output_changed::true"
+
+    - name: Commit changed file
+      if: steps.run.outputs.output_changed == 'true'
+      uses: alexesprit/action-update-file@master
+      with:
+        file-path: covid19-aut.csv
+        commit-msg: Update covid19-aut.csv
+        github-token: ${{ secrets.GITHUB_TOKEN }}
