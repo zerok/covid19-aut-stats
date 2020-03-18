@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.8'
+
+    - uses: actions/checkout@v2
+
+    - name: Setup
+      id: run
+      run: |
+        export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
+        python -m pip install --upgrade pip pipenv && \
+        pipenv --python python3.8 sync && \
+        make covid19-aut.sqlite && \
+        pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name}
