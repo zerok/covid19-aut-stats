@@ -1,4 +1,4 @@
-date,tests,confirmed,deaths,recovered,state_1,state_2,state_3,state_4,state_5,state_6,state_7,state_8,state_9
+date,tests,confirmed,deaths,recovered,confirmed_state_1,confirmed_state_2,confirmed_state_3,confirmed_state_4,confirmed_state_5,confirmed_state_6,confirmed_state_7,confirmed_state_8,confirmed_state_9
 2020-03-13T15:00:00+01:00,6582,504,1,,,,,,,,,,
 2020-03-14T15:00:00+01:00,7467,655,1,,,,,,,,,,
 2020-03-15T08:00:00+01:00,8167,800,1,,,,,,,,,,

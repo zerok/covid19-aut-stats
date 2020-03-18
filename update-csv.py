@@ -28,7 +28,7 @@ state_mapping = {
     'Wien': 9,
 }
 
-headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'state_{i}' for i in range(1,10)]
+headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)]
 
 def atoi(s):
     return int(s.replace('.', ''))
