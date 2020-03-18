@@ -1,2 +1,2 @@
 covid19-aut.sqlite: covid19-aut.csv
-	rm $@ && pipenv run csvs-to-sqlite $< $@
+	rm -f $@ && pipenv run csvs-to-sqlite $< $@
