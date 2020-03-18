@@ -15,12 +15,20 @@ jobs:
         python-version: '3.8'
 
     - uses: actions/checkout@v2
+    - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+      with:
+        version: '281.0.0'
+        service_account_email: ${{ secrets.GCP_SA_EMAIL }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
 
     - name: Setup
       id: run
       run: |
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
+        gcloud auth configure-docker && \
         python -m pip install --upgrade pip pipenv && \
         pipenv --python python3.8 sync && \
         make covid19-aut.sqlite && \
-        pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name}
+        pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} && \
+        docker push ${image_name}
