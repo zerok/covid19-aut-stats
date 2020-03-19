@@ -30,6 +30,7 @@ jobs:
         pipenv --python python3.8 sync
         pipenv run python3 update-csv.py --output-file covid19-aut.csv
         if [[ -n "$(git diff covid19-aut.csv)" ]]; then
+          gcloud auth configure-docker
           echo "::set-output name=output_changed::true"
           make covid19-aut.sqlite
           pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name}
