@@ -25,6 +25,7 @@ jobs:
       id: run
       run: |
         set -e
+        export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
         python -m pip install --upgrade pip pipenv
         pipenv --python python3.8 sync
         pipenv run python3 update-csv.py --output-file covid19-aut.csv
