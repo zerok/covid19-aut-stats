@@ -14,14 +14,27 @@ jobs:
         python-version: '3.8'
 
     - uses: actions/checkout@v2
+    - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+      with:
+        version: '281.0.0'
+        service_account_email: ${{ secrets.GCP_SA_EMAIL }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
 
     - name: Setup
       id: run
       run: |
+        set -e
         python -m pip install --upgrade pip pipenv
         pipenv --python python3.8 sync
         pipenv run python3 update-csv.py --output-file covid19-aut.csv
-        test -n "$(git diff covid19-aut.csv)" && echo "::set-output name=output_changed::true" || echo "Nothing changed"
+        if [[ -n "$(git diff covid19-aut.csv)" ]]; then
+          echo "::set-output name=output_changed::true"
+          make covid19-aut.sqlite
+          pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name}
+          docker push ${image_name}
+          gcloud run deploy covid19-aut-stats --image ${image_name} --platform managed --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }}
+        fi
 
     - name: Commit changed file
       if: steps.run.outputs.output_changed == 'true'
