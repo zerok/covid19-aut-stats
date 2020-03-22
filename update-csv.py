@@ -9,7 +9,7 @@ import sys
 
 time_re = re.compile(r'Stand, (\d\d.\d\d.\d\d\d\d, \d\d:\d\d)')
 tests_re = re.compile(r'Testungen: ([^ ]+)')
-confirmed_re = re.compile(r'Bestätigte Fälle: ([^ ]+)')
+confirmed_re = re.compile(r'Bestätigte Fälle:\s+([^ ]+)')
 deaths_re = re.compile(r'Todesfälle: ([^ ]+)')
 recovered_re = re.compile(r'Genesene Personen: ([^ ]+)')
 state_count_re = re.compile(r'(\S+)\s\(([^)]+)\)')
