@@ -7,7 +7,7 @@ import csv
 from pathlib import Path
 import sys
 
-time_re = re.compile(r'Stand, (\d\d.\d\d.\d\d\d\d, \d\d:\d\d)')
+time_re = re.compile(r'Stand in Österreich, (\d\d.\d\d.\d\d\d\d, \d\d:\d\d)')
 tests_re = re.compile(r'Testungen: ([^ ]+)')
 confirmed_re = re.compile(r'Bestätigte Fälle:\s+([^ ]+)')
 deaths_re = re.compile(r'Todesfälle: ([^ ]+)')
