@@ -9,6 +9,7 @@ httpx = "*"
 "beautifulsoup4" = "*"
 pendulum = "*"
 csvs-to-sqlite = "*"
+datasette-vega = "*"
 
 [dev-packages]
 
