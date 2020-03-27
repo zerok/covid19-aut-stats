@@ -9,6 +9,7 @@ import json
 import bs4
 
 deaths_re = re.compile(r'Todesfälle , Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: (\d+),')
+tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\): ([0-9.]+)')
 simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
 sozmin_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
@@ -68,7 +69,7 @@ def main():
     resp = httpx.get(simpledata_url)
     for line in resp.text.split('\n'):
         if 'Erkrankungen' in line:
-            fed.confirmed = line.split(' = ')[1].rstrip(';')
+            fed.confirmed = int(line.split(' = ')[1].rstrip(';'))
         if 'LetzteAktualisierung' in line:
             fed.date = pendulum.from_format(line.split(' = ')[1].rstrip(';')[1:-1], 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
 
@@ -78,6 +79,9 @@ def main():
         mo = deaths_re.search(paragraph)
         if mo:
             fed.deaths = atoi(mo.group(1))
+        mo = tests_re.search(paragraph)
+        if mo:
+            fed.tested = atoi(mo.group(1))
 
 
     resp = httpx.get(state_url)
