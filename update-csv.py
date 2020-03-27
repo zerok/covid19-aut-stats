@@ -1,31 +1,28 @@
 import httpx
 import argparse
-from bs4 import BeautifulSoup
 import re
 import pendulum
 import csv
 from pathlib import Path
 import sys
+import json
+import bs4
 
-time_re = re.compile(r'Stand in Österreich, (\d\d.\d\d.\d\d\d\d, \d\d:\d\d)')
-tests_re = re.compile(r'Testungen: ([^ ]+)')
-confirmed_re = re.compile(r'Bestätigte Fälle:\s+([^ ]+)')
-deaths_re = re.compile(r'Todesfälle: ([^ ]+)')
-recovered_re = re.compile(r'Genesene Personen: ([^ ]+)')
-state_count_re = re.compile(r'(\S+)\s\(([^)]+)\)')
-
-bms_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
+deaths_re = re.compile(r'Todesfälle , Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: (\d+),')
+simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
+state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
+sozmin_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
 
 state_mapping = {
-    'Burgenland': 1,
-    'Kärnten': 2,
-    'Niederösterreich': 3,
-    'Oberösterreich': 4,
-    'Salzburg': 5,
-    'Steiermark': 6,
-    'Tirol': 7,
-    'Vorarlberg': 8,
-    'Wien': 9,
+    'Bgld': 1,
+    'Ktn': 2,
+    'NÖ': 3,
+    'OÖ': 4,
+    'Sbg': 5,
+    'Stmk': 6,
+    'T': 7,
+    'Vbg': 8,
+    'W': 9,
 }
 
 headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)]
@@ -49,16 +46,10 @@ class FederalData:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-file')
     parser.add_argument('--output-file')
     args = parser.parse_args()
     doc = None
-    if args.input_file:
-        with open(args.input_file, encoding='utf-8') as fp:
-            doc = BeautifulSoup(fp.read(), features='html.parser')
-    else:
-        resp = httpx.get(bms_url)
-        doc = BeautifulSoup(resp.text, features='html.parser')
+
 
     rows = []
 
@@ -73,43 +64,38 @@ def main():
                     rows.append(row)
 
     # Load federal data:
-    abstract = doc.find(attrs={
-        'class': 'abstract'
-    })
-    raw = strip(abstract)
-
     fed = FederalData()
-    mo = time_re.search(raw)
-    if mo:
-        fed.date = pendulum.from_format(mo.group(1), 'DD.MM.YYYY, HH:mm', tz='Europe/Vienna')
-    mo = tests_re.search(raw)
-    if mo:
-        fed.tested = atoi(mo.group(1))
-    mo = confirmed_re.search(raw)
-    if mo:
-        fed.confirmed = atoi(mo.group(1))
-    mo = deaths_re.search(raw)
-    if mo:
-        fed.deaths = atoi(mo.group(1))
-    mo = recovered_re.search(raw)
-    if mo:
-        fed.recovered = atoi(mo.group(1))
+    resp = httpx.get(simpledata_url)
+    for line in resp.text.split('\n'):
+        if 'Erkrankungen' in line:
+            fed.confirmed = line.split(' = ')[1].rstrip(';')
+        if 'LetzteAktualisierung' in line:
+            fed.date = pendulum.from_format(line.split(' = ')[1].rstrip(';')[1:-1], 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
 
+    resp = httpx.get(sozmin_url)
+    doc = bs4.BeautifulSoup(resp.text, features='html.parser')
+    for paragraph in [strip(p) for p in doc.find_all('p')]:
+        mo = deaths_re.search(paragraph)
+        if mo:
+            fed.deaths = atoi(mo.group(1))
+
+
+    resp = httpx.get(state_url)
+    data = resp.text.lstrip('var dpBundesland = ').rstrip().rstrip(';')
+    data = json.loads(data)
     # Load data for every state:
-    infoboxes = [strip(e) for e in doc.find(class_='infobox').find_all('p')]
     state_counts = [''] * 9
-    for box in infoboxes:
-        if box.startswith('Bestätigte Fälle'):
-            for state in state_count_re.finditer(box):
-                state_name = state.group(1)
-                state_code = state_mapping[state_name]
-                state_count = atoi(state.group(2))
-                state_counts[state_code-1] = state_count
+    for state in data:
+        state_name = state['label']
+        state_code = state_mapping[state_name]
+        state_count = state['y']
+        state_counts[state_code-1] = state_count
 
     formatted_date = fed.date.isoformat()
     for row in rows:
         if row[0] == formatted_date:
             sys.exit(0)
+
     rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts)
 
     if args.output_file:
