@@ -14,6 +14,18 @@ simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
 sozmin_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
 
+statename_mapping = {
+    'Burgenland': 1,
+    'Kärnten': 2,
+    'Niederösterreich': 3,
+    'Oberösterreich': 4,
+    'Salzburg': 5,
+    'Steiermark': 6,
+    'Tirol': 7,
+    'Vorarlberg': 8,
+    'Wien': 9,
+}
+
 state_mapping = {
     'Bgld': 1,
     'Ktn': 2,
@@ -26,7 +38,8 @@ state_mapping = {
     'W': 9,
 }
 
-headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)]
+headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)] + [f'hospitalized_state_{i}' for i in range(1, 10)] + [f'intensivecare_state_{i}' for i in range(1, 10)]
+
 
 def atoi(s):
     return int(s.replace('.', ''))
@@ -100,13 +113,46 @@ def main():
         if row[0] == formatted_date:
             sys.exit(0)
 
-    rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts)
+    hospitalized, intensivecare = fetch_hospital_numbers()
+
+    rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts + hospitalized + intensivecare)
+
+    # normalize rows
+    updated_rows = []
+    for row in rows:
+        updated_rows.append(row + [None] * (len(headers) - len(row)))
 
     if args.output_file:
         with open(args.output_file, 'w+') as fp:
-            csv.writer(fp).writerows([headers] + rows)
+            csv.writer(fp).writerows([headers] + updated_rows)
     else:
-        csv.writer(sys.stdout).writerows([headers] + rows)
+        csv.writer(sys.stdout).writerows([headers] + updated_rows)
+
+
+def fetch_hospital_numbers():
+    """
+    Loads number of people in hospitals and those with intensive care.
+    """
+    hospital_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Dashboard/Zahlen-zur-Hospitalisierung'
+    resp = httpx.get(hospital_url)
+    doc = bs4.BeautifulSoup(resp.text, features='html.parser')
+    tables = list(doc.find_all('tbody'))
+    if len(tables) != 1:
+        raise 'unexpected number of tables found'
+    state_counts_hosp = [''] * 9
+    state_counts_int = [''] * 9
+    for row in tables[0].find_all('tr'):
+        rowtext = strip(row).strip()
+        fields = rowtext.split(' ')
+        if len(fields) > 3:
+            continue
+        state_name = fields[0]
+        state_code = statename_mapping[state_name]
+        state_count_hosp = int(fields[1])
+        state_count_intensive = int(fields[2])
+        state_counts_hosp[state_code-1] = state_count_hosp
+        state_counts_int[state_code-1] = state_count_intensive
+    return state_counts_hosp, state_counts_int
 
 
 if __name__ == '__main__':

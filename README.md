@@ -21,3 +21,4 @@ Austrian "Bundesministerium Soziales, Gesundheit, Pflege und Konsumentenschutz.
 - <https://orf.at/corona/daten>
 - <https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html>
 - <https://info.gesundheitsministerium.at/>
+- <https://www.sozialministerium.at/Informationen-zum-Coronavirus/Dashboard/Zahlen-zur-Hospitalisierung>
