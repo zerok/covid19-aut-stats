@@ -82,7 +82,7 @@ def main():
     resp = httpx.get(simpledata_url)
     for line in resp.text.split('\n'):
         if 'Erkrankungen' in line:
-            fed.confirmed = int(line.split(' = ')[1].rstrip(';'))
+            fed.confirmed = int(line.split(' = ')[1].rstrip(';').strip('"\''))
         if 'LetzteAktualisierung' in line:
             fed.date = pendulum.from_format(line.split(' = ')[1].rstrip(';')[1:-1], 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
 
@@ -98,7 +98,7 @@ def main():
 
 
     resp = httpx.get(state_url)
-    data = resp.text.lstrip('var dpBundesland = ').rstrip().rstrip(';')
+    data = resp.text.split('\n')[0].lstrip('var dpBundesland = ').rstrip().rstrip(';')
     data = json.loads(data)
     # Load data for every state:
     state_counts = [''] * 9
