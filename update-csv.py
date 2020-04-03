@@ -8,7 +8,7 @@ import sys
 import json
 import bs4
 
-deaths_re = re.compile(r'Todesfälle , Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: (\d+),')
+deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: (\d+),')
 tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\): ([0-9.]+)')
 simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
@@ -95,7 +95,6 @@ def main():
         mo = tests_re.search(paragraph)
         if mo:
             fed.tested = atoi(mo.group(1))
-
 
     resp = httpx.get(state_url)
     data = resp.text.split('\n')[0].lstrip('var dpBundesland = ').rstrip().rstrip(';')
