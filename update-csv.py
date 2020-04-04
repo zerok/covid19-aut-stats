@@ -127,6 +127,14 @@ def main():
     else:
         csv.writer(sys.stdout).writerows([headers] + updated_rows)
 
+    latests = rows[-1]
+
+    print(f'''New numbers for Austria available ({fed.date.isoformat()}):
+Positive tests: {fed.confirmed}
+Deaths: {fed.deaths}
+Hospitalized: {sum(hospitalized)}
+Intensive care: {sum(intensivecare)}''')
+
 
 def fetch_hospital_numbers():
     """
