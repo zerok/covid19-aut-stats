@@ -23,6 +23,10 @@ jobs:
 
     - name: Setup
       id: run
+      env:
+        MATRIX_USER: ${{ secrets.MATRIX_USER }}
+        MATRIX_PASSWORD: ${{ secrets.MATRIX_PASSWORD }}
+        MATRIX_HOMESERVER_URL: ${{ secrets.MATRIX_HOMESERVER_URL }}
       run: |
         set -e
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
