@@ -90,7 +90,6 @@ def main():
     resp = httpx.get(sozmin_url)
     doc = bs4.BeautifulSoup(resp.text, features='html.parser')
     for paragraph in [strip(p) for p in doc.find_all('p')]:
-        print(paragraph)
         mo = deaths_re.search(paragraph)
         if mo:
             fed.deaths = atoi(mo.group(1))
@@ -140,6 +139,7 @@ def main():
 
     print(f'''New numbers for Austria available ({fed.date.isoformat()}):
 Positive tests: {fed.confirmed} ({format_delta(latest[2], previous[2])})
+Recovered: {fed.recovered} ({format_delta(latest[4], previous[4])})
 Deaths: {fed.deaths} ({format_delta(latest[3], previous[3])})
 Hospitalized: {sum(hospitalized)} ({format_delta(current_hospitalized, previous_hospitalized)})
 Intensive care: {sum(intensivecare)} ({format_delta(current_intensivecare, previous_intensivecare)})
