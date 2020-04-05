@@ -121,19 +121,54 @@ def main():
     for row in rows:
         updated_rows.append(row + [None] * (len(headers) - len(row)))
 
+    latest = rows[-1]
+    previous = latest
+    if len(rows) > 1:
+        previous = get_latest_yesterday(rows, now=fed.date)
+
+    previous_hospitalized = sum([int(i) for i in previous[14:23]])
+    current_hospitalized = sum([int(i) for i in latest[14:23]])
+    previous_intensivecare = sum([int(i) for i in previous[23:32]])
+    current_intensivecare = sum([int(i) for i in latest[23:32]])
+    assert current_hospitalized == sum(hospitalized)
+    assert current_intensivecare == sum(intensivecare)
+
+    print(f'''New numbers for Austria available ({fed.date.isoformat()}):
+Positive tests: {fed.confirmed} ({format_delta(latest[2], previous[2])})
+Deaths: {fed.deaths} ({format_delta(latest[3], previous[3])})
+Hospitalized: {sum(hospitalized)} ({format_delta(current_hospitalized, previous_hospitalized)})
+Intensive care: {sum(intensivecare)} ({format_delta(current_intensivecare, previous_intensivecare)})
+
+(Compared to {previous[0]})''')
+
     if args.output_file:
         with open(args.output_file, 'w+') as fp:
             csv.writer(fp).writerows([headers] + updated_rows)
     else:
         csv.writer(sys.stdout).writerows([headers] + updated_rows)
 
-    latests = rows[-1]
 
-    print(f'''New numbers for Austria available ({fed.date.isoformat()}):
-Positive tests: {fed.confirmed}
-Deaths: {fed.deaths}
-Hospitalized: {sum(hospitalized)}
-Intensive care: {sum(intensivecare)}''')
+def get_latest_yesterday(rows, now=None):
+    if now is None:
+        now = pendulum.now()
+    yesterday = now.subtract(days=1)
+    candidate = None
+    for row in reversed(rows):
+        d = pendulum.parse(row[0])
+        if d.day == yesterday.day and d.month == yesterday.month and d.year == yesterday.year:
+            candidate = row
+            break
+    if candidate is None and len(rows) > 1:
+        candidate = rows[-2]
+    return candidate
+
+
+def format_delta(current, previous):
+    curr = int(current)
+    prev = int(previous)
+    if curr >= prev:
+        return f'+{curr-prev}'
+    return f'{curr-prev}'
 
 
 def fetch_hospital_numbers():
