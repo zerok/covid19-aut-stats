@@ -8,7 +8,8 @@ import sys
 import json
 import bs4
 
-deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: (\d+),')
+deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: ([0-9.]+),')
+recoveries_re = re.compile(r'Genesen\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: ([0-9.]+),')
 tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\): ([0-9.]+)')
 simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
@@ -55,7 +56,7 @@ class FederalData:
     recovered = 0
 
     def __str__(self):
-        return f'<FederatedData date={self.date} deaths={self.deaths} confirmed={self.confirmed} tested={self.tested}>'
+        return f'<FederatedData date={self.date} deaths={self.deaths} recovered={self.recovered} confirmed={self.confirmed} tested={self.tested}>'
 
 
 def main():
@@ -89,12 +90,16 @@ def main():
     resp = httpx.get(sozmin_url)
     doc = bs4.BeautifulSoup(resp.text, features='html.parser')
     for paragraph in [strip(p) for p in doc.find_all('p')]:
+        print(paragraph)
         mo = deaths_re.search(paragraph)
         if mo:
             fed.deaths = atoi(mo.group(1))
         mo = tests_re.search(paragraph)
         if mo:
             fed.tested = atoi(mo.group(1))
+        mo = recoveries_re.search(paragraph)
+        if mo:
+            fed.recovered = atoi(mo.group(1))
 
     resp = httpx.get(state_url)
     data = resp.text.split('\n')[0].lstrip('var dpBundesland = ').rstrip().rstrip(';')
