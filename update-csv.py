@@ -137,8 +137,12 @@ def main():
     assert current_hospitalized == sum(hospitalized)
     assert current_intensivecare == sum(intensivecare)
 
+    current_infected = fed.confirmed - fed.deaths - fed.recovered
+    previous_infected = int(previous[2]) - int(previous[3]) - int(previous[4])
+
     print(f'''New numbers for Austria available ({fed.date.isoformat()}):
 Positive tests: {fed.confirmed} ({format_delta(latest[2], previous[2])})
+Currently infected: {current_infected} ({format_delta(current_infected, previous_infected)})
 Recovered: {fed.recovered} ({format_delta(latest[4], previous[4])})
 Deaths: {fed.deaths} ({format_delta(latest[3], previous[3])})
 Hospitalized: {sum(hospitalized)} ({format_delta(current_hospitalized, previous_hospitalized)})
