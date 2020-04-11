@@ -31,6 +31,7 @@ jobs:
         set -e
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
         curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+        source $HOME/.poetry/env
         poetry env use python3.8
         poetry install
         poetry run python3 update-csv.py --output-file covid19-aut.csv > output.txt
