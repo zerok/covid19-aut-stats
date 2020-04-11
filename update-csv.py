@@ -8,8 +8,8 @@ import sys
 import json
 import bs4
 
-deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: ([0-9.]+),')
-recoveries_re = re.compile(r'Genesen\s*, Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr: ([0-9.]+),')
+deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
+recoveries_re = re.compile(r'Genesen\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
 tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\): ([0-9.]+)')
 simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'

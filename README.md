@@ -7,10 +7,9 @@
 ## How to use?
 
 ```
-pipenv sync
-pipenv run python3 update-csv.py --output-file covid19-aut.csv
-pipenv run csvs-to-sqlite covid19-aut.csv covid19-aut.sqlite
-pipenv run datasette covid19-aut.sqlite
+poetry run python3 update-csv.py --output-file covid19-aut.csv
+poetry run csvs-to-sqlite covid19-aut.csv covid19-aut.sqlite
+poetry run datasette covid19-aut.sqlite
 ```
 
 ## Sources:
