@@ -30,9 +30,10 @@ jobs:
       run: |
         set -e
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
-        python -m pip install --upgrade pip pipenv
-        pipenv --python python3.8 sync
-        pipenv run python3 update-csv.py --output-file covid19-aut.csv > output.txt
+        curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+        poetry env use python3.8
+        poetry install
+        poetry run python3 update-csv.py --output-file covid19-aut.csv > output.txt
         if [[ -n "$(git diff covid19-aut.csv)" ]]; then
           wget https://github.com/zerok/matrix-send/releases/download/v0.1.0/matrix-send_0.1.0_Linux_x86_64.tar.gz
           tar -xzvf matrix-send_0.1.0_Linux_x86_64.tar.gz
@@ -40,7 +41,7 @@ jobs:
           gcloud auth configure-docker
           echo "::set-output name=output_changed::true"
           make covid19-aut.sqlite
-          pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} --install=datasette-vega
+          poetry run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} --install=datasette-vega
           docker push ${image_name}
           gcloud run deploy covid19-aut-stats --image ${image_name} --platform managed --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }}
         fi

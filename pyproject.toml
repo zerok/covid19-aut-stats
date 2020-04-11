@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "covid19-aut-stats"
+version = "0.1.0"
+description = ""
+authors = ["Horst Gutmann <zerok@zerokspot.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+datasette = "*"
+httpx = "*"
+"beautifulsoup4" = "*"
+pendulum = "*"
+csvs-to-sqlite = "*"
+datasette-vega = "*"

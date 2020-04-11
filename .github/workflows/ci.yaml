@@ -27,9 +27,10 @@ jobs:
       run: |
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
         gcloud auth configure-docker && \
-        python -m pip install --upgrade pip pipenv && \
-        pipenv --python python3.8 sync && \
+        curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+        poetry env use python3.8
+        poetry install
         make covid19-aut.sqlite && \
-        pipenv run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} --install=datasette-vega && \
+        poetry run datasette package covid19-aut.sqlite --metadata metadata.json --tag ${image_name} --install=datasette-vega && \
         docker push ${image_name} && \
         gcloud run deploy covid19-aut-stats --image ${image_name} --platform managed --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }}
