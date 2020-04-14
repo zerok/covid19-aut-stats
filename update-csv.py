@@ -35,7 +35,7 @@ state_mapping = {
     'Sbg': 5,
     'Stmk': 6,
     'T': 7,
-    'Vbg': 8,
+    'V': 8,
     'W': 9,
 }
 
