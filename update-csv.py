@@ -7,6 +7,10 @@ from pathlib import Path
 import sys
 import json
 import bs4
+import zipfile
+import shutil
+import os
+import math
 
 deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
 recoveries_re = re.compile(r'Genesen\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
@@ -14,6 +18,7 @@ tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\)
 simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
 sozmin_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
+datazip_url = 'https://info.gesundheitsministerium.at/data/data.zip'
 
 statename_mapping = {
     'Burgenland': 1,
@@ -39,7 +44,7 @@ state_mapping = {
     'W': 9,
 }
 
-headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)] + [f'hospitalized_state_{i}' for i in range(1, 10)] + [f'intensivecare_state_{i}' for i in range(1, 10)]
+headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)] + [f'hospitalized_state_{i}' for i in range(1, 10)] + [f'intensivecare_state_{i}' for i in range(1, 10)] + ['hospitalized_total', 'intensivecare_total']
 
 
 def atoi(s):
@@ -77,6 +82,8 @@ def main():
                     if i == 0:
                         continue
                     rows.append(row)
+
+    data_folder = download_and_extract_datazip(datazip_url)
 
     # Load federal data:
     fed = FederalData()
@@ -116,26 +123,29 @@ def main():
         if row[0] == formatted_date:
             sys.exit(0)
 
-    hospitalized, intensivecare = fetch_hospital_numbers()
+    hospitalized, intensivecare, hospitalized_total, intensivecare_total = fetch_hospital_numbers(data_folder)
 
-    rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts + hospitalized + intensivecare)
+    rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts + hospitalized + intensivecare + [hospitalized_total, intensivecare_total])
 
     # normalize rows
     updated_rows = []
     for row in rows:
         updated_rows.append(row + [None] * (len(headers) - len(row)))
 
-    latest = rows[-1]
+    latest = updated_rows[-1]
     previous = latest
-    if len(rows) > 1:
-        previous = get_latest_yesterday(rows, now=fed.date)
+    if len(updated_rows) > 1:
+        previous = get_latest_yesterday(updated_rows, now=fed.date)
 
-    previous_hospitalized = sum([int(i) for i in previous[14:23]])
-    current_hospitalized = sum([int(i) for i in latest[14:23]])
-    previous_intensivecare = sum([int(i) for i in previous[23:32]])
-    current_intensivecare = sum([int(i) for i in latest[23:32]])
-    assert current_hospitalized == sum(hospitalized)
-    assert current_intensivecare == sum(intensivecare)
+    previous_hospitalized = previous[32]
+    previous_intensivecare = previous[33]
+    if not previous_hospitalized:
+        previous_hospitalized = sum_columns(previous[14:23])
+    current_hospitalized = hospitalized_total
+
+    if not previous_intensivecare:
+        previous_intensivecare = sum_columns(previous[23:32])
+    current_intensivecare = intensivecare_total
 
     current_infected = fed.confirmed - fed.deaths - fed.recovered
     previous_infected = int(previous[2]) - int(previous[3]) - int(previous[4])
@@ -145,8 +155,8 @@ Positive tests: {fed.confirmed} ({format_delta(latest[2], previous[2])})
 Currently infected: {current_infected} ({format_delta(current_infected, previous_infected)})
 Recovered: {fed.recovered} ({format_delta(latest[4], previous[4])})
 Deaths: {fed.deaths} ({format_delta(latest[3], previous[3])})
-Hospitalized: {sum(hospitalized)} ({format_delta(current_hospitalized, previous_hospitalized)})
-Intensive care: {sum(intensivecare)} ({format_delta(current_intensivecare, previous_intensivecare)})
+Hospitalized: {current_hospitalized} ({format_delta(current_hospitalized, previous_hospitalized)})
+Intensive care: {current_intensivecare} ({format_delta(current_intensivecare, previous_intensivecare)})
 
 (Compared to {previous[0]})''')
 
@@ -180,30 +190,52 @@ def format_delta(current, previous):
     return f'{curr-prev}'
 
 
-def fetch_hospital_numbers():
+def sum_columns(values):
+    result = 0
+    for v in values:
+        try:
+            result += int(v)
+        except:
+            pass
+    return result
+
+
+def fetch_hospital_numbers(data_folder):
     """
     Loads number of people in hospitals and those with intensive care.
     """
-    hospital_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Dashboard/Zahlen-zur-Hospitalisierung'
-    resp = httpx.get(hospital_url)
-    doc = bs4.BeautifulSoup(resp.text, features='html.parser')
-    tables = list(doc.find_all('tbody'))
-    if len(tables) != 1:
-        raise 'unexpected number of tables found'
+    # Fill old state-based numbers with empty values for now
     state_counts_hosp = [''] * 9
     state_counts_int = [''] * 9
-    for row in tables[0].find_all('tr'):
-        rowtext = strip(row).strip()
-        fields = rowtext.split(' ')
-        if len(fields) > 3:
+    hospitalized_total = 0
+    intensivecare_total = 0
+
+    for idx, row in enumerate(csv.reader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';')):
+        if idx == 0:
             continue
-        state_name = fields[0]
-        state_code = statename_mapping[state_name]
-        state_count_hosp = int(fields[1])
-        state_count_intensive = int(fields[2])
-        state_counts_hosp[state_code-1] = state_count_hosp
-        state_counts_int[state_code-1] = state_count_intensive
-    return state_counts_hosp, state_counts_int
+        hospitalized_cap, intensivecare_cap, hospitalized_total, intensivecare_total = int(row[6]), int(row[7]), int(row[8]), int(row[9])
+
+    return state_counts_hosp, state_counts_int, hospitalized_total, intensivecare_total
+
+
+def download_and_extract_datazip(url):
+    resp = httpx.get(url)
+    output = Path('data.zip')
+    output_folder = Path('_datazip')
+    if output_folder.exists():
+        shutil.rmtree(output_folder)
+    output_folder.mkdir(parents=True)
+    with output.open('wb+') as fp:
+        for chunk in resp.iter_bytes():
+            fp.write(chunk)
+
+    zf = zipfile.ZipFile(output)
+    os.chdir(output_folder)
+    try:
+        zf.extractall()
+    finally:
+        os.chdir('..')
+    return output_folder
 
 
 if __name__ == '__main__':
