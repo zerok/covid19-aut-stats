@@ -12,12 +12,7 @@ import shutil
 import os
 import math
 
-deaths_re = re.compile(r'Todesfälle\s*\(1\)\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
-recoveries_re = re.compile(r'Genesen\s*,\s*Stand \d\d.\d\d.\d\d\d\d, \d\d:\d\d Uhr\s*:\s*([0-9.]+),')
-tests_re = re.compile(r'Bisher durchgeführte Testungen in Österreich \([^)]+\): ([0-9.]+)')
-simpledata_url = 'https://info.gesundheitsministerium.at/data/SimpleData.js'
 state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
-sozmin_url = 'https://www.sozialministerium.at/Informationen-zum-Coronavirus/Neuartiges-Coronavirus-(2019-nCov).html'
 datazip_url = 'https://info.gesundheitsministerium.at/data/data.zip'
 
 statename_mapping = {
@@ -87,25 +82,13 @@ def main():
 
     # Load federal data:
     fed = FederalData()
-    resp = httpx.get(simpledata_url)
-    for line in resp.text.split('\n'):
-        if 'Erkrankungen' in line:
-            fed.confirmed = int(line.split(' = ')[1].rstrip(';').strip('"\''))
-        if 'LetzteAktualisierung' in line:
-            fed.date = pendulum.from_format(line.split(' = ')[1].rstrip(';')[1:-1], 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
 
-    resp = httpx.get(sozmin_url)
-    doc = bs4.BeautifulSoup(resp.text, features='html.parser')
-    for paragraph in [strip(p) for p in doc.find_all('p')]:
-        mo = deaths_re.search(paragraph)
-        if mo:
-            fed.deaths = atoi(mo.group(1))
-        mo = tests_re.search(paragraph)
-        if mo:
-            fed.tested = atoi(mo.group(1))
-        mo = recoveries_re.search(paragraph)
-        if mo:
-            fed.recovered = atoi(mo.group(1))
+    for idx, row in enumerate(csv.DictReader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';')):
+        fed.confirmed = int(row['PositivGetestet'])
+        fed.date = parse_date(row['LetzteAktualisierung'])
+        fed.deaths = int(row['Tot'])
+        fed.recovered = int(row['Genesen'])
+        fed.tested = int(row['GesTestungen'])
 
     resp = httpx.get(state_url)
     data = resp.text.split('\n')[0].lstrip('var dpBundesland = ').rstrip().rstrip(';')
@@ -240,6 +223,9 @@ def download_and_extract_datazip(url):
     finally:
         os.chdir('..')
     return output_folder
+
+def parse_date(s):
+    return pendulum.from_format(s, 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
 
 
 if __name__ == '__main__':
