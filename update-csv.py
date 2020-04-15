@@ -131,6 +131,10 @@ def main():
     updated_rows = []
     for row in rows:
         updated_rows.append(row + [None] * (len(headers) - len(row)))
+        if not updated_rows[-1][32]:
+            updated_rows[-1][32] = sum_columns(updated_rows[-1][14:23])
+        if not updated_rows[-1][33]:
+            updated_rows[-1][33] = sum_columns(updated_rows[-1][23:32])
 
     latest = updated_rows[-1]
     previous = latest
