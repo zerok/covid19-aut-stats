@@ -225,7 +225,7 @@ def download_and_extract_datazip(url):
     return output_folder
 
 def parse_date(s):
-    return pendulum.from_format(s, 'DD.MM.YYYY HH:mm.ss', tz='Europe/Vienna')
+    return pendulum.from_format(s, 'DD.MM.YYYY HH:mm:ss', tz='Europe/Vienna')
 
 
 if __name__ == '__main__':
