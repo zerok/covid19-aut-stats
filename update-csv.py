@@ -86,7 +86,7 @@ def main():
     for idx, row in enumerate(csv.DictReader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';')):
         fed.confirmed = int(row['PositivGetestet'])
         fed.date = parse_date(row['LetzteAktualisierung'])
-        fed.deaths = int(row['Tot'])
+        fed.deaths = int(row['TotBestaetigt'])
         fed.recovered = int(row['Genesen'])
         fed.tested = int(row['GesTestungen'])
 
