@@ -51,7 +51,7 @@ jobs:
 
     - name: Commit changed file
       if: steps.run.outputs.output_changed == 'true'
-      uses: alexesprit/action-update-file@master
+      uses: alexesprit/action-update-file@main
       with:
         file-path: covid19-aut.csv
         commit-msg: Update covid19-aut.csv
