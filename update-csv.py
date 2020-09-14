@@ -197,10 +197,8 @@ def fetch_hospital_numbers(data_folder):
     hospitalized_total = 0
     intensivecare_total = 0
 
-    for idx, row in enumerate(csv.reader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';')):
-        if idx == 0:
-            continue
-        hospitalized_cap, intensivecare_cap, hospitalized_total, intensivecare_total = int(row[6]), int(row[7]), int(row[8]), int(row[9])
+    for row in csv.DictReader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';'):
+        hospitalized_cap, intensivecare_cap, hospitalized_total, intensivecare_total = int(row['GesNBVerf']), int(row['GesIBVerf']), int(row['GesNBBel']), int(row['GesIBBel'])
 
     return state_counts_hosp, state_counts_int, hospitalized_total, intensivecare_total
 
