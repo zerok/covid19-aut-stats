@@ -12,8 +12,6 @@ import shutil
 import os
 import math
 
-state_url = 'https://info.gesundheitsministerium.at/data/Bundesland.js'
-datazip_url = 'https://info.gesundheitsministerium.at/data/data.zip'
 
 statename_mapping = {
     'Burgenland': 1,
@@ -41,12 +39,82 @@ state_mapping = {
 
 headers = ['date', 'tests', 'confirmed', 'deaths', 'recovered'] + [f'confirmed_state_{i}' for i in range(1,10)] + [f'hospitalized_state_{i}' for i in range(1, 10)] + [f'intensivecare_state_{i}' for i in range(1, 10)] + ['hospitalized_total', 'intensivecare_total']
 
+def download_datasets():
+    data_folder = Path('data')
+    if data_folder.exists():
+        shutil.rmtree(data_folder)
+    data_folder.mkdir()
+    data_sets = {
+        'CovidFaelle_Timeline.csv': 'https://covid19-dashboard.ages.at/data/CovidFaelle_Timeline.csv',
+        'CovidFallzahlen.csv': 'https://covid19-dashboard.ages.at/data/CovidFallzahlen.csv',
+    }
+
+    for key, url in data_sets.items():
+        (data_folder / key).write_text(httpx.get(url).content.decode('utf-8'))
+
+
+def get_case_numbers():
+    data_folder = Path('data')
+    max_date = None
+    with (data_folder / 'CovidFaelle_Timeline.csv').open() as fp:
+        for row in csv.DictReader(fp, delimiter=';'):
+            max_date = parse_date(row['Time'])
+    federal = None
+    by_state = {}
+    with (data_folder / 'CovidFaelle_Timeline.csv').open() as fp:
+        for row in csv.DictReader(fp, delimiter=';'):
+            if parse_date(row['Time']) != max_date:
+                continue
+            if row['BundeslandID'] == '10':
+                d = FederalData()
+                d.date = max_date
+                d.deaths = atoi(row['AnzahlTotSum'])
+                d.confirmed = atoi(row['AnzahlFaelleSum'])
+                d.recovered = atoi(row['AnzahlGeheiltSum'])
+                federal = d
+            else:
+                d = StateData()
+                d.date = max_date
+                d.deaths = atoi(row['AnzahlTotSum'])
+                d.confirmed = atoi(row['AnzahlFaelleSum'])
+                d.recovered = atoi(row['AnzahlGeheiltSum'])
+                d.id = atoi(row['BundeslandID'])
+                d.name = row['Bundesland']
+                by_state[row['BundeslandID']] = d
+    with (data_folder / 'CovidFallzahlen.csv').open() as fp:
+        for row in csv.DictReader(fp, delimiter=';'):
+            if parse_date(row['MeldeDatum']) != max_date:
+                continue
+            if row['BundeslandID'] == '10':
+                federal.tested = atoi(row['TestGesamt'])
+                federal.hospitalized = atoi(row['FZHosp'])
+                federal.intensivecare = atoi(row['FZICU'])
+            else:
+                by_state[row['BundeslandID']].tested = atoi(row['TestGesamt'])
+                by_state[row['BundeslandID']].hospitalized = atoi(row['FZHosp'])
+                by_state[row['BundeslandID']].intensivecare = atoi(row['FZICU'])
+    return (federal, by_state)
+    
 
 def atoi(s):
     return int(s.replace('.', ''))
 
-def strip(elem):
-    return ' '.join([s.strip() for s in elem.strings]).replace('  ', ' ')
+
+class StateData:
+    id = 0
+    name = None
+    date = None
+    confirmed = 0
+    hospitalized = 0
+    intensivecare = 0
+    tested = 0
+
+    def __str__(self):
+        return f'<StateData date={self.date} deaths={self.deaths} recovered={self.recovered} confirmed={self.confirmed} tested={self.tested} intensivecare={self.intensivecare} hospitalized={self.hospitalized}>'
+
+    def __repr__(self):
+        return str(self)
+
 
 class FederalData:
     date = None
@@ -58,13 +126,16 @@ class FederalData:
     def __str__(self):
         return f'<FederatedData date={self.date} deaths={self.deaths} recovered={self.recovered} confirmed={self.confirmed} tested={self.tested}>'
 
+    def __repr__(self):
+        return str(self)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-file')
+    parser.add_argument('--skip-download', default=False, action='store_true')
     args = parser.parse_args()
     doc = None
-
 
     rows = []
 
@@ -78,35 +149,25 @@ def main():
                         continue
                     rows.append(row)
 
-    data_folder = download_and_extract_datazip(datazip_url)
+    if not args.skip_download:
+        download_datasets()
+    fed, by_state = get_case_numbers()
 
-    # Load federal data:
-    fed = FederalData()
-
-    for idx, row in enumerate(csv.DictReader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';')):
-        fed.confirmed = int(row['PositivGetestet'])
-        fed.date = parse_date(row['LetzteAktualisierung'])
-        fed.deaths = int(row['TotBestaetigt'])
-        fed.recovered = int(row['Genesen'])
-        fed.tested = int(row['GesTestungen'])
-
-    resp = httpx.get(state_url)
-    data = resp.text.split('\n')[0].lstrip('var dpBundesland = ').rstrip().rstrip(';')
-    data = json.loads(data)
     # Load data for every state:
     state_counts = [''] * 9
-    for state in data:
-        state_name = state['label']
-        state_code = state_mapping[state_name]
-        state_count = state['y']
-        state_counts[state_code-1] = state_count
+    hospitalized = [''] * 9
+    intensivecare = [''] * 9
+    for _, state in by_state.items():
+        state_counts[state.id-1] = state.confirmed
+        intensivecare[state.id-1] = state.intensivecare
+        hospitalized[state.id-1] = state.hospitalized
+    hospitalized_total = fed.hospitalized
+    intensivecare_total = fed.intensivecare
 
     formatted_date = fed.date.isoformat()
     for row in rows:
         if row[0] == formatted_date:
             sys.exit(0)
-
-    hospitalized, intensivecare, hospitalized_total, intensivecare_total = fetch_hospital_numbers(data_folder)
 
     rows.append([fed.date.isoformat(), fed.tested, fed.confirmed, fed.deaths, fed.recovered] + state_counts + hospitalized + intensivecare + [hospitalized_total, intensivecare_total])
 
@@ -186,41 +247,6 @@ def sum_columns(values):
             pass
     return result
 
-
-def fetch_hospital_numbers(data_folder):
-    """
-    Loads number of people in hospitals and those with intensive care.
-    """
-    # Fill old state-based numbers with empty values for now
-    state_counts_hosp = [''] * 9
-    state_counts_int = [''] * 9
-    hospitalized_total = 0
-    intensivecare_total = 0
-
-    for row in csv.DictReader((data_folder / 'AllgemeinDaten.csv').open(), delimiter=';'):
-        hospitalized_cap, intensivecare_cap, hospitalized_total, intensivecare_total = int(row['GesNBVerf']), int(row['GesIBVerf']), int(row['GesNBBel']), int(row['GesIBBel'])
-
-    return state_counts_hosp, state_counts_int, hospitalized_total, intensivecare_total
-
-
-def download_and_extract_datazip(url):
-    resp = httpx.get(url)
-    output = Path('data.zip')
-    output_folder = Path('_datazip')
-    if output_folder.exists():
-        shutil.rmtree(output_folder)
-    output_folder.mkdir(parents=True)
-    with output.open('wb+') as fp:
-        for chunk in resp.iter_bytes():
-            fp.write(chunk)
-
-    zf = zipfile.ZipFile(output)
-    os.chdir(output_folder)
-    try:
-        zf.extractall()
-    finally:
-        os.chdir('..')
-    return output_folder
 
 def parse_date(s):
     return pendulum.from_format(s, 'DD.MM.YYYY HH:mm:ss', tz='Europe/Vienna')
