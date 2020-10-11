@@ -122,6 +122,8 @@ class FederalData:
     confirmed = 0
     tested = 0
     recovered = 0
+    hospitalized = 0
+    intensivecare = 0
 
     def __str__(self):
         return f'<FederatedData date={self.date} deaths={self.deaths} recovered={self.recovered} confirmed={self.confirmed} tested={self.tested}>'
