@@ -81,6 +81,10 @@ def get_case_numbers():
                 d.id = atoi(row['BundeslandID'])
                 d.name = row['Bundesland']
                 by_state[row['BundeslandID']] = d
+    # We need to reset the max date as both datasets are not updated at the same time.
+    with (data_folder / 'CovidFallzahlen.csv').open() as fp:
+        for row in csv.DictReader(fp, delimiter=';'):
+            max_date = parse_date(row['MeldeDatum'])
     with (data_folder / 'CovidFallzahlen.csv').open() as fp:
         for row in csv.DictReader(fp, delimiter=';'):
             if parse_date(row['MeldeDatum']) != max_date:
@@ -93,6 +97,9 @@ def get_case_numbers():
                 by_state[row['BundeslandID']].tested = atoi(row['TestGesamt'])
                 by_state[row['BundeslandID']].hospitalized = atoi(row['FZHosp'])
                 by_state[row['BundeslandID']].intensivecare = atoi(row['FZICU'])
+    # Use the date that is newer
+    if max_date > federal.date:
+        federal.date = max_date
     return (federal, by_state)
     
 
