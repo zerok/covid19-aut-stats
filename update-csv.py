@@ -11,6 +11,7 @@ import zipfile
 import shutil
 import os
 import math
+from httpx._config import DEFAULT_CIPHERS
 
 
 statename_mapping = {
@@ -49,8 +50,14 @@ def download_datasets():
         'CovidFallzahlen.csv': 'https://covid19-dashboard.ages.at/data/CovidFallzahlen.csv',
     }
 
+    # Something about the DH key changed on 2021-03-16 15:00
+    # UTC+1. Disabling that part of the check for now:
+    context = httpx.create_ssl_context()
+    ciphers = DEFAULT_CIPHERS + ':HIGH:!DH:!aNULL'
+    context.set_ciphers(ciphers)
+
     for key, url in data_sets.items():
-        (data_folder / key).write_text(httpx.get(url).content.decode('utf-8'))
+        (data_folder / key).write_text(httpx.get(url, verify=context).content.decode('utf-8'))
 
 
 def get_case_numbers():
