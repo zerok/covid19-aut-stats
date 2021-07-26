@@ -63,12 +63,12 @@ def download_datasets():
 def get_case_numbers():
     data_folder = Path('data')
     max_date = None
-    with (data_folder / 'CovidFaelle_Timeline.csv').open() as fp:
+    with (data_folder / 'CovidFaelle_Timeline.csv').open(encoding='utf-8-sig') as fp:
         for row in csv.DictReader(fp, delimiter=';'):
             max_date = parse_date(row['Time'])
     federal = None
     by_state = {}
-    with (data_folder / 'CovidFaelle_Timeline.csv').open() as fp:
+    with (data_folder / 'CovidFaelle_Timeline.csv').open(encoding='utf-8-sig') as fp:
         for row in csv.DictReader(fp, delimiter=';'):
             if parse_date(row['Time']) != max_date:
                 continue
