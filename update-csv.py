@@ -57,7 +57,7 @@ def download_datasets():
     context.set_ciphers(ciphers)
 
     for key, url in data_sets.items():
-        (data_folder / key).write_text(httpx.get(url, verify=context).content.decode('utf-8'))
+        (data_folder / key).write_text(httpx.get(url, verify=context).content.decode('utf-8').rstrip('\0'))
 
 
 def get_case_numbers():
