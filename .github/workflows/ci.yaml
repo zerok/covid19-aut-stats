@@ -27,7 +27,7 @@ jobs:
       run: |
         export image_name=eu.gcr.io/atomic-marking-535/covid19-aut-stats:${{ github.run_id }}
         gcloud auth configure-docker && \
-        curl -sSL -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
+        curl -sSL -o get-poetry.py https://install.python-poetry.org/
         python3 get-poetry.py --version 1.1.5
         source $HOME/.poetry/env
         mkdir -p $HOME/.cache/pypoetry/virtualenvs
